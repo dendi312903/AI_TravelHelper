@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Response
+from fastapi import FastAPI, HTTPException, Depends, Response, Form
 from pydantic import BaseModel
 from typing import Annotated
 from sqlalchemy import select
@@ -55,11 +55,25 @@ class NewPlace(BaseModel):
     name: str
     adding_data: str
 
+# @app.post('/places')
+# async def add_places(data: PlaceAddSchema, session: SessionDep):
+#     new_place = PlaceModel(
+#         name=data.name,
+#         adding_data=data.adding_data
+#     )
+#     session.add(new_place)
+#     await session.commit()
+#     return {"ok": True}
+
 @app.post('/places')
-async def add_places(data: PlaceAddSchema, session: SessionDep):
+async def add_places(
+    name: str,
+    adding_data: str,
+    session: SessionDep
+):
     new_place = PlaceModel(
-        name=data.name,
-        adding_data=data.adding_data
+        name=name,
+        adding_data=adding_data
     )
     session.add(new_place)
     await session.commit()
