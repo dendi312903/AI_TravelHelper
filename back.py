@@ -1,9 +1,10 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Response
 from pydantic import BaseModel
 from typing import Annotated
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from authx import AuthX, AuthXConfig
 
 app = FastAPI()
 engine = create_async_engine('sqlite+aiosqlite:///database.db')
@@ -50,17 +51,6 @@ async def get_places(session: SessionDep):
     result = await session.execute(query)
     return result.scalars().all()
 
-
-# @app.get(
-#     "/places/{place_id}",
-#          tags=["Места"],
-#          summary="Получить конкретное место")
-# def get_book(place_id: int):
-#     for place in places:
-#         if place["id"] == place_id:
-#             return place
-#     raise HTTPException(status_code=404, detail="Место не найдено")
-
 class NewPlace(BaseModel):
     name: str
     adding_data: str
@@ -74,3 +64,24 @@ async def add_places(data: PlaceAddSchema, session: SessionDep):
     session.add(new_place)
     await session.commit()
     return {"ok": True}
+
+config = AuthXConfig()
+config.JWT_SECRET_KEY = "SECRET_KEY"
+config.JWT_ACCESS_COOKIE_NAME = "my_access_token"
+config.JWT_TOKEN_LOCATION = ["cookies"]
+
+security = AuthX(config=config)
+
+
+@app.post('/login')
+def login(username: str, password: str, response: Response):
+    if username == "dendi31" and password == "12345qwerty":
+        token = security.create_access_token(uid=username)
+        response.set_cookie(config.JWT_ACCESS_COOKIE_NAME, token)
+        return {"access_token": token}
+    raise HTTPException(401, detail={"message": "Bad credentials"})
+
+
+@app.get("/protected", dependencies=[Depends(security.access_token_required)])
+def get_protected():
+    return {"message": "Hello World"}
